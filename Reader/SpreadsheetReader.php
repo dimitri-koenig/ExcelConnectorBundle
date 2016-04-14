@@ -89,7 +89,7 @@ class SpreadsheetReader extends FileIteratorReader
     /**
      * @param string $delimiter
      *
-     * @return SpreadsheetReader
+     * @return $this
      */
     public function setDelimiter($delimiter)
     {

@@ -2,21 +2,22 @@
 
 namespace Pim\Bundle\ExcelConnectorBundle\Iterator;
 
-use Akeneo\Component\SpreadsheetParser\SpreadsheetInterface;
-use Akeneo\Component\SpreadsheetParser\SpreadsheetLoader;
+use Box\Spout\Common\Type;
+use Box\Spout\Reader\ReaderFactory;
+use Box\Spout\Reader\ReaderInterface;
 use Iterator;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * XLSX File iterator
+ * Spout File iterator
  *
- * @author    Antoine Guigan <antoine@akeneo.com>
+ * @author    JM Leroux <jean-marie.leroux@akeneo.com>
  * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements ContainerAwareInterface
+class SpoutFileIterator extends AbstractFileIterator implements ContainerAwareInterface
 {
     /** @var ContainerInterface */
     protected $container;
@@ -27,9 +28,12 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
     /** @var Iterator */
     protected $valuesIterator;
 
-    /** @var SpreadsheetInterface */
-    private $xls;
+    /** @var ReaderInterface */
+    private $spout;
 
+    /** @var string[] */
+    protected $labels;
+    
     /**
      * {@inheritdoc}
      */
@@ -52,6 +56,7 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
     public function next()
     {
         $this->valuesIterator->next();
+
         if (!$this->valuesIterator->valid()) {
             $this->worksheetIterator->next();
             if ($this->worksheetIterator->valid()) {
@@ -65,13 +70,7 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
      */
     public function rewind()
     {
-        $xls = $this->getExcelObject();
-        $this->worksheetIterator = new \CallbackFilterIterator(
-            new \ArrayIterator($xls->getWorksheets()),
-            function ($title, $key) use ($xls) {
-                return $this->isReadableWorksheet($title);
-            }
-        );
+        $this->worksheetIterator = $this->getWorksheetIterator();
         $this->worksheetIterator->rewind();
         if ($this->worksheetIterator->valid()) {
             $this->initializeValuesIterator();
@@ -83,15 +82,16 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
     /**
      * Returns the associated Excel object
      *
-     * @return SpreadsheetInterface
+     * @return ReaderInterface
      */
     public function getExcelObject()
     {
-        if (!$this->xls) {
-            $this->xls = $this->getWorkbookLoader()->open($this->filePath);
+        if (!$this->spout) {
+            $this->spout = ReaderFactory::create(Type::XLSX);
+            $this->spout->open($this->filePath);
         }
 
-        return $this->xls;
+        return $this->spout;
     }
 
     /**
@@ -108,6 +108,12 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
     public function setContainer(ContainerInterface $container = null)
     {
         $this->container = $container;
+    }
+
+    private function getWorksheetIterator()
+    {
+        // TODO imlements CallbackFilterIterator to filter worksheets
+        return $this->getExcelObject()->getSheetIterator();
     }
 
     /**
@@ -186,42 +192,10 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
         $resolver->setDefaults(
             array(
                 'exclude_worksheets' => array(),
-                'parser_options'     => array()
+                'parser_options' => array()
             )
         );
         $resolver->setDefined(array('include_worksheets'));
-    }
-
-    /**
-     * Returns the Array Helper service
-     *
-     * @return ArrayHelper
-     */
-    protected function getArrayHelper()
-    {
-        return $this->container->get('pim_excel_connector.iterator.array_helper');
-    }
-
-    /**
-     * Returns the workbook reader
-     *
-     * @return SpreadsheetLoader
-     */
-    protected function getWorkbookLoader()
-    {
-        return $this->container->get('akeneo_spreadsheet_parser.spreadsheet_loader');
-    }
-
-    /**
-     * Returns an iterator for the specified worksheet
-     *
-     * @param int $worksheetIndex
-     *
-     * @return Iterator
-     */
-    protected function createIterator($worksheetIndex)
-    {
-        return $this->getExcelObject()->createRowIterator($worksheetIndex, $this->options['parser_options']);
     }
 
     /**
@@ -229,5 +203,25 @@ abstract class AbstractXlsxFileIterator extends AbstractFileIterator implements 
      *
      * @return Iterator
      */
-    abstract protected function createValuesIterator();
+    protected function createValuesIterator()
+    {
+        // TODO manage $this->options['parser_options']
+        $sheet = $this->getWorksheetIterator()->current();
+
+        $iterator = $sheet->getRowIterator();
+        $iterator->rewind();
+        $this->options['label_row'] = 1;
+        $this->options['data_row'] = 2;
+        while ($iterator->valid() && ((int) $this->options['label_row'] > $iterator->key())) {
+            $iterator->next();
+        }
+        
+        $this->labels = $iterator->current();
+        
+        while ($iterator->valid() && ((int) $this->options['data_row'] > $iterator->key())) {
+            $iterator->next();
+        }
+
+        return $iterator;
+    }
 }

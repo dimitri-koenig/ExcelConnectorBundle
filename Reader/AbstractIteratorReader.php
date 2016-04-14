@@ -56,6 +56,15 @@ abstract class AbstractIteratorReader extends AbstractConfigurableStepElement im
         }
 
         $current = $this->iterator->current();
+
+        ob_start();
+        var_dump($current);
+        $foo = ob_get_clean();
+
+        file_put_contents('/tmp/jml.log', 'classe = ' . static::class . PHP_EOL);
+        file_put_contents('/tmp/jml.log', 'iterator = ' . get_class($this->iterator) . PHP_EOL);
+        file_put_contents('/tmp/jml.log', $foo . PHP_EOL, FILE_APPEND);
+
         if ($this->stepExecution) {
             $this->stepExecution->incrementSummaryInfo('read');
         }

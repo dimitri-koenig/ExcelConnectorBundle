@@ -21,7 +21,8 @@
     "require": {
         "akeneo/pim-community-dev": "1.5.*",
         "phpoffice/phpexcel": "1.8.*",
-        "akeneo-labs/spreadsheet-parser-bundle": "1.1.*"
+        "akeneo-labs/spreadsheet-parser-bundle": "1.1.*",
+        "box/spout": "^2.4"
     },
     "require-dev": {
         "phpspec/phpspec": "2.1.*",

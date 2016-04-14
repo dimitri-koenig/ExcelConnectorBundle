@@ -40,13 +40,13 @@ connector:
                 import:
                     title:     pim_excel_connector.jobs.product.import.title
                     services:
-                        reader:    pim_excel_connector.reader.spreadsheet
+                        reader:    pim_excel_connector.reader.spout
                         processor: pim_connector.processor.denormalization.product.flat
                         writer:    pim_connector.writer.doctrine.product
                 import_associations:
                     title:     pim_base_connector.jobs.csv_product_import.import_associations.title
                     services:
-                        reader:    pim_excel_connector.reader.spreadsheet
+                        reader:    pim_excel_connector.reader.spout
                         processor: pim_connector.processor.denormalization.product_association.flat
                         writer:    pim_connector.writer.doctrine.product_association
                     parameters:
